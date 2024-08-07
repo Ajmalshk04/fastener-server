@@ -5,12 +5,15 @@ const projectRoutes = require("./routes/projectRoutes");
 const quotationRoutes = require("./routes/quotationRoutes");
 const supplierRoutes = require("./routes/supplierRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const cors = require("cors");
 
 const app = express();
 
 // Connect to database
 connectDB();
 
+// Use CORS middleware
+app.use(cors());
 // Middleware
 app.use(express.json());
 

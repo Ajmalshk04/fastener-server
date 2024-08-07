@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 const SupplierSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  companyName: { type: String, required: true },
+  companyName: { type: String },
   companyAddress: { type: String },
   taxId: { type: String },
   manufacturingCapabilities: [String],

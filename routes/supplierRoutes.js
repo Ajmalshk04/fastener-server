@@ -37,11 +37,13 @@ const {
   updateSupplier,
   getSupplierProjects,
   updateProjectStatus,
+  getSupplierByUserId,
 } = require("../controllers/supplierControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
 router.get("/", protect, authorize("admin"), getSuppliers);
 router.get("/:id", protect, getSupplierById);
+router.get("/get-by-user-id", protect, getSupplierByUserId);
 router.put("/:id", protect, authorize("admin", "supplier"), updateSupplier);
 router.get(
   "/:id/projects",

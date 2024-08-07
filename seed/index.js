@@ -36,7 +36,7 @@ const seedData = async () => {
       {
         _id: new mongoose.Types.ObjectId("5f8d0f5b9d3f2a1b3c4d5e6f"),
         email: "john@example.com",
-        password: await hashPassword("password123"),
+        password: await hashPassword("12345"),
         role: "customer",
         firstName: "John",
         lastName: "Doe",
@@ -47,7 +47,7 @@ const seedData = async () => {
       {
         _id: new mongoose.Types.ObjectId("5f8d0f5b9d3f2a1b3c4d5e70"),
         email: "jane@example.com",
-        password: await hashPassword("adminpass456"),
+        password: await hashPassword("12345"),
         role: "admin",
         firstName: "Jane",
         lastName: "Smith",
@@ -58,7 +58,7 @@ const seedData = async () => {
       {
         _id: new mongoose.Types.ObjectId("5f8d0f5b9d3f2a1b3c4d5e71"),
         email: "bob@supplier.com",
-        password: await hashPassword("supplierpass789"),
+        password: await hashPassword("12345"),
         role: "supplier",
         firstName: "Bob",
         lastName: "Johnson",
@@ -69,7 +69,7 @@ const seedData = async () => {
       {
         _id: new mongoose.Types.ObjectId("5f8d0f5b9d3f2a1b3c4d5e78"),
         email: "alice@customer.com",
-        password: await hashPassword("alicepass321"),
+        password: await hashPassword("12345"),
         role: "customer",
         firstName: "Alice",
         lastName: "Brown",
@@ -80,7 +80,7 @@ const seedData = async () => {
       {
         _id: new mongoose.Types.ObjectId("5f8d0f5b9d3f2a1b3c4d5e79"),
         email: "charlie@supplier.com",
-        password: await hashPassword("charliepass654"),
+        password: await hashPassword("12345"),
         role: "supplier",
         firstName: "Charlie",
         lastName: "Davis",
@@ -91,7 +91,7 @@ const seedData = async () => {
       {
         _id: new mongoose.Types.ObjectId("5f8d0f5b9d3f2a1b3c4d5e80"),
         email: "diana@supplier.com",
-        password: await hashPassword("dianapass987"),
+        password: await hashPassword("12345"),
         role: "supplier",
         firstName: "Diana",
         lastName: "Evans",
@@ -402,3 +402,4 @@ const seedData = async () => {
 };
 
 seedData();
+//===================================================

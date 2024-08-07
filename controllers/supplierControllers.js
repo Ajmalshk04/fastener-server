@@ -39,13 +39,54 @@ exports.getSupplierById = async (req, res) => {
     res.status(400).json({ success: false, error: error.message });
   }
 };
+exports.getSupplierByUserId = async (req, res) => {
+  try {
+    const user = req.user;
+
+    // Ensure that user._id is being passed correctly as an ObjectId
+    if (!user || !user._id) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User ID is not valid" });
+    }
+
+    const supplier = await Supplier.findOne({ user: user._id }).populate(
+      "user",
+      "firstName lastName email"
+    );
+    if (!supplier) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Supplier not found" });
+    }
+    res.status(200).json({ success: true, data: supplier });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
 
 exports.updateSupplier = async (req, res) => {
   try {
-    const supplier = await Supplier.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    let updateData = req.body;
+
+    // If competencies are being updated, ensure they're added to manufacturingCapabilities
+    if (req.body.competencies) {
+      updateData = {
+        ...req.body,
+        manufacturingCapabilities: req.body.competencies,
+      };
+      delete updateData.competencies; // Remove the temporary competencies field
+    }
+
+    const supplier = await Supplier.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
     if (!supplier) {
       return res
         .status(404)

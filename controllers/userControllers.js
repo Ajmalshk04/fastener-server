@@ -51,16 +51,19 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select("+password");
-    if (!user || !(await user.matchPassword(password))) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid credentials" });
-    }
+
     if (!user.isVerified) {
       return res
         .status(401)
         .json({ success: false, message: "Please verify your account first" });
     }
+
+    if (!user || !(await user.matchPassword(password))) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid credentials" });
+    }
+
     const token = user.getSignedJwtToken();
     res.status(200).json({ success: true, token, role: user.role });
   } catch (error) {
