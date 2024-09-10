@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 const ProjectSchema = new Schema(
   {
     customer: { type: Schema.Types.ObjectId, ref: "Customer", required: true },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     supplier: { type: Schema.Types.ObjectId, ref: "Supplier" },
     admin: { type: Schema.Types.ObjectId, ref: "Admin" },
     title: { type: String, required: true },
@@ -45,22 +46,20 @@ const ProjectSchema = new Schema(
           type: String,
           enum: ["3D_MODEL", "DRAWING", "SPECIFICATION", "IMAGE", "OTHER"],
         },
-        size: Number, // File size in bytes
         uploadedAt: Date,
       },
     ],
     status: {
       type: String,
       enum: [
-        "DRAFT",
-        "SUBMITTED",
         "QUOTED",
+        "AVAILABLE",
         "IN_PRODUCTION",
         "SHIPPED",
         "DELIVERED",
         "CANCELLED",
       ],
-      default: "DRAFT",
+      default: "AVAILABLE",
     },
     deliveryDate: Date,
   },

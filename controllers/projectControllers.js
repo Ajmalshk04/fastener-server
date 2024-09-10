@@ -8,18 +8,18 @@ exports.createProject = async (req, res) => {
   try {
     const project = await Project.create({
       ...req.body,
-      customer: req.user.id,
+      user: req.user._id,
     });
 
     // Notify admin about new project
-    const admins = await User.find({ role: "admin" });
-    for (let admin of admins) {
-      await sendEmail(
-        admin.email,
-        "New Project Created",
-        `A new project "${project.title}" has been created and needs your attention.`
-      );
-    }
+    // const admins = await User.find({ role: "admin" });
+    // for (let admin of admins) {
+    //   await sendEmail(
+    //     admin.email,
+    //     "New Project Created",
+    //     `A new project "${project.title}" has been created and needs your attention.`
+    //   );
+    // }
 
     res.status(201).json({ success: true, data: project });
   } catch (error) {
@@ -29,7 +29,10 @@ exports.createProject = async (req, res) => {
 
 exports.getProjects = async (req, res) => {
   try {
-    const features = new APIFeatures(Project.find(), req.query)
+    const features = new APIFeatures(
+      Project.find().populate("customer"),
+      req.query
+    )
       .search()
       .filter()
       .sort()
@@ -49,6 +52,24 @@ exports.getProjects = async (req, res) => {
 exports.getProjectById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id).populate("supplier");
+    if (!project) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Project not found" });
+    }
+    res.status(200).json({ success: true, data: project });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+exports.getProjectByUserId = async (req, res) => {
+  try {
+    console.log("Project-MONGOID", req.user);
+
+    const project = await Project.find({ user: req.user._id }).populate(
+      "customer"
+    );
     if (!project) {
       return res
         .status(404)

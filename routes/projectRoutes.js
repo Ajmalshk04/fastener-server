@@ -8,14 +8,24 @@ const {
   updateProject,
   deleteProject,
   forwardToSuppliers,
+  getProjectByUserId,
 } = require("../controllers/projectControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.post("/", protect, authorize("customer"), createProject);
-router.get("/", protect, getProjects);
-router.get("/:id", protect, getProjectById);
-router.put("/:id", protect, authorize("admin", "supplier"), updateProject);
-router.delete("/:id", protect, authorize("admin"), deleteProject);
-router.post("/:id/forward", protect, authorize("admin"), forwardToSuppliers);
+router.use(protect);
+
+router.post("/", authorize("customer"), createProject);
+router.get("/", getProjects);
+router.get(
+  "/get-project-by-user-id",
+  authorize("customer"),
+  getProjectByUserId
+);
+
+router.get("/:id", getProjectById);
+
+router.put("/:id", authorize("admin", "supplier"), updateProject);
+router.delete("/:id", authorize("admin"), deleteProject);
+router.post("/:id/forward", authorize("admin"), forwardToSuppliers);
 
 module.exports = router;

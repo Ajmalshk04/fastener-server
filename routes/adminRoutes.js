@@ -9,6 +9,7 @@ const {
   getDashboardStats,
   forwardProjectToSuppliers,
   reviewQuotation,
+  getAllSuppliers,
 } = require("../controllers/adminControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -16,6 +17,7 @@ router.use(protect);
 router.use(authorize("admin"));
 
 router.get("/users", getAllUsers);
+router.get("/suppliers", getAllSuppliers);
 router.get("/users/:id", getUserById);
 router.put("/users/:id", updateUser);
 router.delete("/users/:id", deleteUser);

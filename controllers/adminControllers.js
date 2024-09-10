@@ -6,7 +6,15 @@ const { sendEmail } = require("../helpers/emailHelper");
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find();
+    const users = await User.find({ role: "customer" });
+    res.status(200).json({ success: true, count: users.length, data: users });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+exports.getAllSuppliers = async (req, res) => {
+  try {
+    const users = await User.find({ role: "supplier" });
     res.status(200).json({ success: true, count: users.length, data: users });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
