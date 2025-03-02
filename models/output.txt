@@ -1,5 +1,5 @@
 ﻿=======================================================================
-C:\My-Projects\Fastners-new\server\models\adminModel.js
+E:\My-Projects\Fastners-new\server\models\adminModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -15,7 +15,7 @@ module.exports = Admin;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\customerModel.js
+E:\My-Projects\Fastners-new\server\models\customerModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -48,7 +48,7 @@ module.exports = Customer;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\projectModel.js
+E:\My-Projects\Fastners-new\server\models\projectModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -105,7 +105,6 @@ const ProjectSchema = new Schema(
       type: String,
       enum: [
         "AVAILABLE",
-        "READY_FOR_JOB",
         "IN_PRODUCTION",
         "SHIPPED",
         "DELIVERED",
@@ -123,7 +122,7 @@ module.exports = Project;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\projectUpdateModel.js
+E:\My-Projects\Fastners-new\server\models\projectUpdateModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -138,6 +137,7 @@ const ProjectUpdateSchema = new Schema(
       enum: ["PENDING", "IN_PROGRESS", "COMPLETED"],
       default: "PENDING",
     },
+    completionPercentage: { type: Number, required: true },
     attachments: [
       {
         name: String,
@@ -172,16 +172,14 @@ const ProjectUpdateSchema = new Schema(
         uploadedAt: Date,
       },
     ],
-    createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
 module.exports = mongoose.model("ProjectUpdate", ProjectUpdateSchema);
 
-
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\quotationModel.js
+E:\My-Projects\Fastners-new\server\models\quotationModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -195,7 +193,7 @@ const QuotationSchema = new Schema(
     },
     supplier: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Supplier",
       required: true,
     },
     unitPrice: {
@@ -243,11 +241,12 @@ const QuotationSchema = new Schema(
   { timestamps: true }
 );
 
+QuotationSchema.index({ project: 1, supplier: 1 }, { unique: true });
 module.exports = mongoose.model("Quotation", QuotationSchema);
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\supplierModel.js
+E:\My-Projects\Fastners-new\server\models\supplierModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -271,7 +270,7 @@ module.exports = Supplier;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\userModel.js
+E:\My-Projects\Fastners-new\server\models\userModel.js
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");

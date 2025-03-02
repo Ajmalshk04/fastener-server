@@ -11,6 +11,7 @@ const ProjectUpdateSchema = new Schema(
       enum: ["PENDING", "IN_PROGRESS", "COMPLETED"],
       default: "PENDING",
     },
+    completionPercentage: { type: Number, required: true },
     attachments: [
       {
         name: String,
@@ -45,7 +46,6 @@ const ProjectUpdateSchema = new Schema(
         uploadedAt: Date,
       },
     ],
-    createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

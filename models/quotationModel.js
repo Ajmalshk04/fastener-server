@@ -10,7 +10,7 @@ const QuotationSchema = new Schema(
     },
     supplier: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Supplier",
       required: true,
     },
     unitPrice: {
@@ -58,4 +58,5 @@ const QuotationSchema = new Schema(
   { timestamps: true }
 );
 
+QuotationSchema.index({ project: 1, supplier: 1 }, { unique: true });
 module.exports = mongoose.model("Quotation", QuotationSchema);

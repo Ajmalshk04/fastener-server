@@ -52,7 +52,6 @@ const ProjectSchema = new Schema(
     status: {
       type: String,
       enum: [
-        "QUOTED",
         "AVAILABLE",
         "IN_PRODUCTION",
         "SHIPPED",

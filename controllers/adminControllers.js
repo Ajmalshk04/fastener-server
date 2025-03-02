@@ -2,6 +2,8 @@
 const User = require("../models/userModel");
 const Project = require("../models/projectModel");
 const Quotation = require("../models/quotationModel");
+const ProjectUpdate = require("../models/projectUpdateModel");
+const Supplier = require("../models/supplierModel");
 const { sendEmail } = require("../helpers/emailHelper");
 
 exports.getAllUsers = async (req, res) => {
@@ -147,6 +149,133 @@ exports.reviewQuotation = async (req, res) => {
       message: "Quotation reviewed successfully",
       data: quotation,
     });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+
+
+
+// Get all project updates
+exports.getAllProjectUpdates = async (req, res) => {
+  try {
+    const projectUpdates = await ProjectUpdate.find()
+      .populate("project", "title description status")
+      .populate("supplier", "companyName");
+    res.status(200).json({
+      success: true,
+      count: projectUpdates.length,
+      data: projectUpdates,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Get a single project update by ID
+exports.getProjectUpdateById = async (req, res) => {
+  try {
+    const projectUpdate = await ProjectUpdate.findById(req.params.id)
+      .populate("project", "title description status")
+      .populate("supplier", "companyName");
+    if (!projectUpdate) {
+      return res.status(404).json({ success: false, message: "Project update not found" });
+    }
+    res.status(200).json({ success: true, data: projectUpdate });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Create a new project update (admin override)
+exports.createProjectUpdate = async (req, res) => {
+  try {
+    const { projectId, supplierId, description, status, completionPercentage } = req.body;
+
+    if (!projectId || !supplierId || !description || !status || completionPercentage === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields (projectId, supplierId, description, status, completionPercentage) are required",
+      });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ success: false, message: "Project not found" });
+    }
+
+    const supplier = await Supplier.findById(supplierId);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: "Supplier not found" });
+    }
+
+    const projectUpdate = await ProjectUpdate.create({
+      project: projectId,
+      supplier: supplierId,
+      description,
+      status,
+      completionPercentage,
+    });
+
+    // Update project status if applicable
+    project.status = status === "COMPLETED" ? "DELIVERED" : "IN_PRODUCTION";
+    await project.save();
+
+    // Notify supplier and customer
+    const supplierUser = await User.findById(supplier.user);
+    const customer = await User.findById(project.customer);
+    const recipients = [supplierUser, customer].filter(Boolean);
+    for (let recipient of recipients) {
+      await sendEmail(
+        recipient.email,
+        "Admin Project Update",
+        `Admin updated project "${project.title}" to "${status}". Description: ${description}, Completion: ${completionPercentage}%`
+      );
+    }
+
+    res.status(201).json({ success: true, data: projectUpdate });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Update a project update
+exports.updateProjectUpdate = async (req, res) => {
+  try {
+    const { description, status, completionPercentage } = req.body;
+
+    const projectUpdate = await ProjectUpdate.findById(req.params.id);
+    if (!projectUpdate) {
+      return res.status(404).json({ success: false, message: "Project update not found" });
+    }
+
+    projectUpdate.description = description || projectUpdate.description;
+    projectUpdate.status = status || projectUpdate.status;
+    projectUpdate.completionPercentage = completionPercentage !== undefined ? completionPercentage : projectUpdate.completionPercentage;
+    await projectUpdate.save();
+
+    // Update project status if changed
+    const project = await Project.findById(projectUpdate.project);
+    if (status && project.status !== (status === "COMPLETED" ? "DELIVERED" : "IN_PRODUCTION")) {
+      project.status = status === "COMPLETED" ? "DELIVERED" : "IN_PRODUCTION";
+      await project.save();
+    }
+
+    res.status(200).json({ success: true, data: projectUpdate });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Delete a project update
+exports.deleteProjectUpdate = async (req, res) => {
+  try {
+    const projectUpdate = await ProjectUpdate.findByIdAndDelete(req.params.id);
+    if (!projectUpdate) {
+      return res.status(404).json({ success: false, message: "Project update not found" });
+    }
+    res.status(200).json({ success: true, message: "Project update deleted successfully" });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }

@@ -1,5 +1,5 @@
 ﻿=======================================================================
-C:\My-Projects\Fastners-new\server\config\config.js
+E:\My-Projects\Fastners-new\server\config\config.js
 
 // config.js
 require("dotenv").config();
@@ -18,7 +18,7 @@ module.exports = {
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\config\dbConnection.js
+E:\My-Projects\Fastners-new\server\config\dbConnection.js
 
 // dbConnection.js
 const mongoose = require("mongoose");
@@ -38,12 +38,14 @@ module.exports = connectDB;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\controllers\adminControllers.js
+E:\My-Projects\Fastners-new\server\controllers\adminControllers.js
 
 // adminController.js
 const User = require("../models/userModel");
 const Project = require("../models/projectModel");
 const Quotation = require("../models/quotationModel");
+const ProjectUpdate = require("../models/projectUpdateModel");
+const Supplier = require("../models/supplierModel");
 const { sendEmail } = require("../helpers/emailHelper");
 
 exports.getAllUsers = async (req, res) => {
@@ -195,8 +197,134 @@ exports.reviewQuotation = async (req, res) => {
 };
 
 
+
+
+// Get all project updates
+exports.getAllProjectUpdates = async (req, res) => {
+  try {
+    const projectUpdates = await ProjectUpdate.find()
+      .populate("project", "title description status")
+      .populate("supplier", "companyName");
+    res.status(200).json({
+      success: true,
+      count: projectUpdates.length,
+      data: projectUpdates,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Get a single project update by ID
+exports.getProjectUpdateById = async (req, res) => {
+  try {
+    const projectUpdate = await ProjectUpdate.findById(req.params.id)
+      .populate("project", "title description status")
+      .populate("supplier", "companyName");
+    if (!projectUpdate) {
+      return res.status(404).json({ success: false, message: "Project update not found" });
+    }
+    res.status(200).json({ success: true, data: projectUpdate });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Create a new project update (admin override)
+exports.createProjectUpdate = async (req, res) => {
+  try {
+    const { projectId, supplierId, description, status, completionPercentage } = req.body;
+
+    if (!projectId || !supplierId || !description || !status || completionPercentage === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields (projectId, supplierId, description, status, completionPercentage) are required",
+      });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ success: false, message: "Project not found" });
+    }
+
+    const supplier = await Supplier.findById(supplierId);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: "Supplier not found" });
+    }
+
+    const projectUpdate = await ProjectUpdate.create({
+      project: projectId,
+      supplier: supplierId,
+      description,
+      status,
+      completionPercentage,
+    });
+
+    // Update project status if applicable
+    project.status = status === "COMPLETED" ? "DELIVERED" : "IN_PRODUCTION";
+    await project.save();
+
+    // Notify supplier and customer
+    const supplierUser = await User.findById(supplier.user);
+    const customer = await User.findById(project.customer);
+    const recipients = [supplierUser, customer].filter(Boolean);
+    for (let recipient of recipients) {
+      await sendEmail(
+        recipient.email,
+        "Admin Project Update",
+        `Admin updated project "${project.title}" to "${status}". Description: ${description}, Completion: ${completionPercentage}%`
+      );
+    }
+
+    res.status(201).json({ success: true, data: projectUpdate });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Update a project update
+exports.updateProjectUpdate = async (req, res) => {
+  try {
+    const { description, status, completionPercentage } = req.body;
+
+    const projectUpdate = await ProjectUpdate.findById(req.params.id);
+    if (!projectUpdate) {
+      return res.status(404).json({ success: false, message: "Project update not found" });
+    }
+
+    projectUpdate.description = description || projectUpdate.description;
+    projectUpdate.status = status || projectUpdate.status;
+    projectUpdate.completionPercentage = completionPercentage !== undefined ? completionPercentage : projectUpdate.completionPercentage;
+    await projectUpdate.save();
+
+    // Update project status if changed
+    const project = await Project.findById(projectUpdate.project);
+    if (status && project.status !== (status === "COMPLETED" ? "DELIVERED" : "IN_PRODUCTION")) {
+      project.status = status === "COMPLETED" ? "DELIVERED" : "IN_PRODUCTION";
+      await project.save();
+    }
+
+    res.status(200).json({ success: true, data: projectUpdate });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Delete a project update
+exports.deleteProjectUpdate = async (req, res) => {
+  try {
+    const projectUpdate = await ProjectUpdate.findByIdAndDelete(req.params.id);
+    if (!projectUpdate) {
+      return res.status(404).json({ success: false, message: "Project update not found" });
+    }
+    res.status(200).json({ success: true, message: "Project update deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
 =======================================================================
-C:\My-Projects\Fastners-new\server\controllers\projectControllers.js
+E:\My-Projects\Fastners-new\server\controllers\projectControllers.js
 
 // projectController.js
 const Project = require("../models/projectModel");
@@ -212,14 +340,14 @@ exports.createProject = async (req, res) => {
     });
 
     // Notify admin about new project
-    const admins = await User.find({ role: "admin" });
-    for (let admin of admins) {
-      await sendEmail(
-        admin.email,
-        "New Project Created",
-        `A new project "${project.title}" has been created and needs your attention.`
-      );
-    }
+    // const admins = await User.find({ role: "admin" });
+    // for (let admin of admins) {
+    //   await sendEmail(
+    //     admin.email,
+    //     "New Project Created",
+    //     `A new project "${project.title}" has been created and needs your attention.`
+    //   );
+    // }
 
     res.status(201).json({ success: true, data: project });
   } catch (error) {
@@ -227,23 +355,49 @@ exports.createProject = async (req, res) => {
   }
 };
 
+// exports.getProjects = async (req, res) => {
+//   try {
+//     const features = new APIFeatures(
+//       Project.find(),
+//       req.query
+//     )
+//       .search()
+//       .filter()
+//       .sort()
+//       .limitFields()
+//       .paginate();
+
+//     const projects = await features.query;
+
+//     res
+//       .status(200)
+//       .json({ success: true, count: projects.length, data: projects });
+//   } catch (error) {
+//     res.status(400).json({ success: false, error: error.message });
+//   }
+// };
+
 exports.getProjects = async (req, res) => {
   try {
-    const features = new APIFeatures(
-      Project.find().populate("customer"),
-      req.query
-    )
+    let query = Project.find();
+
+    if (req.user.role === 'supplier') {
+      // Show only projects open for bidding
+      query = query.where({ status: 'AVAILABLE' });
+    } else if (req.user.role === 'customer') {
+      // Show customer's projects
+      query = query.where({ user: req.user._id });
+    }
+
+    const features = new APIFeatures(query, req.query)
       .search()
       .filter()
       .sort()
       .limitFields()
       .paginate();
 
-    const projects = await features.query;
-
-    res
-      .status(200)
-      .json({ success: true, count: projects.length, data: projects });
+    const projects = await features.query.populate('supplier');
+    res.status(200).json({ success: true, data: projects });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
@@ -251,7 +405,7 @@ exports.getProjects = async (req, res) => {
 
 exports.getProjectById = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id).populate("supplier");
+    const project = await Project.findById(req.params.id).populate("customer user supplier");
     if (!project) {
       return res
         .status(404)
@@ -267,7 +421,9 @@ exports.getProjectByUserId = async (req, res) => {
   try {
     console.log("Project-MONGOID", req.user);
 
-    const project = await Project.find({ user: req.user._id });
+    const project = await Project.find({ user: req.user._id }).populate(
+      "customer"
+    );
     if (!project) {
       return res
         .status(404)
@@ -341,7 +497,7 @@ exports.forwardToSuppliers = async (req, res) => {
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\controllers\quotationControllers.js
+E:\My-Projects\Fastners-new\server\controllers\quotationControllers.js
 
 // quotationController.js
 const Quotation = require("../models/quotationModel");
@@ -349,15 +505,44 @@ const Project = require("../models/projectModel");
 const User = require("../models/userModel");
 const { sendEmail } = require("../helpers/emailHelper");
 const APIFeatures = require("../utils/apiFeatures");
+const Supplier = require("../models/supplierModel");
 
 exports.createQuotation = async (req, res) => {
   try {
+    const { 
+      unitPrice, 
+      quantity, 
+      taxes, 
+      shippingCost, 
+      leadTime, 
+      validUntil 
+    } = req.body;
+
+    const user = await User.findOne({ _id: req.user.id });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Supplier profile not found" });
+    }
+
+    const supplier = await Supplier.findOne({ user: req.user.id });
+    if (!supplier) {
+      return res.status(400).json({ success: false, message: "Supplier profile not found" });
+    }
+
     const quotation = await Quotation.create({
-      ...req.body,
-      supplier: req.user.id,
+      project: req.params.projectId,
+      supplier: supplier._id, // Use supplier._id instead of req.user.id
+      unitPrice: parseFloat(unitPrice),
+      quantity: parseInt(quantity),
+      subtotal: parseFloat(unitPrice) * parseInt(quantity),
+      taxes: parseFloat(taxes || 0),
+      shippingCost: parseFloat(shippingCost || 0),
+      totalPrice: parseFloat(unitPrice) * parseInt(quantity) + parseFloat(taxes || 0) + parseFloat(shippingCost || 0),
+      leadTime: parseInt(leadTime),
+      validUntil: new Date(validUntil),
+      status: "PENDING",
     });
 
-    // Notify admin about new quotation
+    // Notify Admin about new quotation
     const admins = await User.find({ role: "admin" });
     for (let admin of admins) {
       await sendEmail(
@@ -375,19 +560,56 @@ exports.createQuotation = async (req, res) => {
 
 exports.getQuotations = async (req, res) => {
   try {
-    const features = new APIFeatures(Quotation.find(), req.query)
+    let query = Quotation.find();
+
+    // Role-based filtering
+    if (req.user.role === "supplier") {
+      const supplier = await Supplier.findOne({ user: req.user.id });
+      if (!supplier) {
+        return res.status(404).json({
+          success: false,
+          message: "Supplier profile not found",
+        });
+      }
+      query = query.where({ supplier: supplier._id });
+    }
+    // No additional filtering for admin or customer roles; admins see all quotations
+
+    const features = new APIFeatures(query, req.query)
       .filter()
       .sort()
       .limitFields()
       .paginate();
 
-    const quotations = await features.query;
+    const quotations = await features.query.populate([
+      {
+        path: "project",
+        select: "title description status createdAt",
+        populate: {
+          path: "customer",
+          select: "companyName",
+        },
+      },
+      {
+        path: "supplier",
+        select: "companyName certifications",
+        populate: {
+          path: "user",
+          select: "firstName lastName email",
+        },
+      },
+    ]);
 
-    res
-      .status(200)
-      .json({ success: true, count: quotations.length, data: quotations });
+    res.status(200).json({
+      success: true,
+      count: quotations.length,
+      data: quotations,
+    });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
@@ -405,22 +627,71 @@ exports.getQuotationById = async (req, res) => {
   }
 };
 
-exports.updateQuotation = async (req, res) => {
+exports.updateQuotationStatus = async (req, res) => {
   try {
-    const quotation = await Quotation.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const { status } = req.body; // status should be either 'ACCEPTED' or 'REJECTED'
+    const quotation = await Quotation.findById(req.params.id).populate("project");
     if (!quotation) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Quotation not found" });
+      return res.status(404).json({ success: false, message: "Quotation not found" });
     }
-    res.status(200).json({ success: true, data: quotation });
+
+    if (status === "ACCEPTED") {
+      // Update quotation status
+      quotation.status = "ACCEPTED";
+      await quotation.save();
+
+      // Update project status and assign supplier
+      const project = await Project.findById(quotation.project._id);
+      if (!project) {
+        return res.status(404).json({ success: false, message: "Project not found" });
+      }
+      project.status = "IN_PRODUCTION";
+      project.supplier = quotation.supplier; // Assign supplier to project
+      await project.save();
+
+      // Notify Supplier about acceptance (if supplier exists)
+      const supplier = quotation.supplier ? await User.findById(quotation.supplier) : null;
+      if (supplier) {
+        await sendEmail(
+          supplier.email,
+          "Quotation Accepted",
+          `Your quotation for project "${project.title}" has been accepted. Production will begin soon.`
+        );
+      } else {
+        console.warn(`No supplier found for quotation ${quotation._id}`);
+      }
+
+      // Notify Customer about acceptance (if customer exists)
+      const customer = project.customer ? await User.findById(project.customer) : null;
+      if (customer) {
+        await sendEmail(
+          customer.email,
+          "Project Update",
+          `A supplier has been selected for your project "${project.title}". Production will begin soon.`
+        );
+      } else {
+        console.warn(`No customer found for project ${project._id}`);
+      }
+    } else if (status === "REJECTED") {
+      quotation.status = "REJECTED";
+      await quotation.save();
+
+      const supplier = quotation.supplier ? await User.findById(quotation.supplier) : null;
+      if (supplier) {
+        await sendEmail(
+          supplier.email,
+          "Quotation Rejected",
+          `Your quotation for project "${quotation.project.title}" has been rejected.`
+        );
+      } else {
+        console.warn(`No supplier found for quotation ${quotation._id}`);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: status === "ACCEPTED" ? "Quotation accepted and project updated" : "Quotation rejected",
+    });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
@@ -470,14 +741,16 @@ exports.acceptQuotation = async (req, res) => {
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\controllers\supplierControllers.js
+E:\My-Projects\Fastners-new\server\controllers\supplierControllers.js
 
 // supplierController.js
 const Supplier = require("../models/supplierModel");
 const User = require("../models/userModel");
 const Project = require("../models/projectModel");
 const APIFeatures = require("../utils/apiFeatures");
-const projectUpdateModel = require("../models/projectUpdateModel");
+const ProjectUpdate = require("../models/projectUpdateModel");
+const quotationModel = require("../models/quotationModel");
+const { sendEmail } = require("../helpers/emailHelper");
 
 exports.getSuppliers = async (req, res) => {
   try {
@@ -515,16 +788,18 @@ exports.getSupplierById = async (req, res) => {
 };
 exports.getSupplierByUserId = async (req, res) => {
   try {
-    const user = req.user;
 
-    // Ensure that user._id is being passed correctly as an ObjectId
-    if (!user || !user._id) {
+    console.log(req.user._id);
+const user = req.user._id;
+
+
+    if (!user || !user.id) {
       return res
         .status(400)
         .json({ success: false, message: "User ID is not valid" });
     }
 
-    const supplier = await Supplier.findOne({ user: user._id }).populate(
+    const supplier = await Supplier.findOne({ user }).populate(
       "user",
       "firstName lastName email"
     );
@@ -613,48 +888,25 @@ exports.getSupplierProjects = async (req, res) => {
   }
 };
 
-exports.updateProjectStatus = async (req, res) => {
+exports.getSupplierOrders = async (req, res) => {
   try {
-    const { projectId, status, description } = req.body;
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Project not found" });
-    }
-
     const supplier = await Supplier.findOne({ user: req.user.id });
-    if (!supplier || project.supplier.toString() !== supplier._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to update this project",
-      });
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: "Supplier profile not found" });
     }
 
-    project.status = status;
-    await project.save();
-
-    // Create a new project update
-    const projectUpdate = await projectUpdateModel.create({
-      project: projectId,
-      supplier: supplier._id,
-      description,
-      status,
+    const orders = await quotationModel.find({ 
+      supplier: supplier._id, 
+      status: "ACCEPTED" 
+    }).populate({
+      path: "project",
+      select: "title description status createdAt",
     });
-
-    // Notify customer about the update
-    const customer = await User.findById(project.customer);
-    await sendEmail(
-      customer.email,
-      "Project Update",
-      `Your project "${project.title}" has been updated to status: ${status}. Update: ${description}`
-    );
 
     res.status(200).json({
       success: true,
-      message: "Project status updated",
-      data: { project, projectUpdate },
+      count: orders.length,
+      data: orders,
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -662,8 +914,220 @@ exports.updateProjectStatus = async (req, res) => {
 };
 
 
+
+exports.updateProjectStatus = async (req, res) => {
+  try {
+    const { projectId, status, description, completionPercentage } = req.body;
+
+    // Validate required fields
+    if (!projectId || !status || !description || completionPercentage === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Project ID, status, description, and completion percentage are required",
+      });
+    }
+
+    // Find the supplier
+    const supplier = await Supplier.findOne({ user: req.user.id });
+    if (!supplier) {
+      return res.status(404).json({
+        success: false,
+        message: "Supplier profile not found",
+      });
+    }
+
+    // Verify the project exists and belongs to the supplier
+    const project = await Project.findOne({ _id: projectId, supplier: supplier._id });
+    if (!project) {
+      return res.status(403).json({
+        success: false,
+        message: "Project not found or not assigned to this supplier",
+      });
+    }
+
+    // Create a new project update
+    const projectUpdate = await ProjectUpdate.create({
+      project: projectId,
+      supplier: supplier._id,
+      description,
+      status,
+      completionPercentage,
+    });
+
+    // Update the project status in the Project model
+    project.status = status === "COMPLETED" ? "DELIVERED" : "IN_PRODUCTION"; // Map to Project model statuses
+    await project.save();
+
+    // Notify customer and admin
+    const customer = await User.findById(project.customer);
+    const admins = await User.find({ role: "admin" });
+    const recipients = [customer, ...admins].filter(Boolean);
+
+    for (let recipient of recipients) {
+      await sendEmail(
+        recipient.email,
+        "Project Status Update",
+        `The project "${project.title}" has been updated to "${status}" by the supplier. Description: ${description}, Completion: ${completionPercentage}%`
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Project status updated successfully",
+      data: projectUpdate,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+exports.submitProjectUpdate = async (req, res) => {
+  try {
+    const { projectId, status, description, completionPercentage } = req.body;
+
+    if (!completionPercentage) {
+      return res.status(400).json({ success: false, message: "Completion percentage is required" });
+    }
+
+    const project = await Project.findOne({ _id: projectId, supplier: req.user._id });
+    if (!project) {
+      return res.status(404).json({ success: false, message: "Project not found or unauthorized" });
+    }
+
+    // Create a new project update
+    const update = await ProjectUpdate.create({
+      project: projectId,
+      supplier: req.user._id,
+      status,
+      description,
+      completionPercentage,
+    });
+
+    // Update project status if necessary
+    if (status !== project.status) {
+      project.status = status;
+      await project.save();
+    }
+
+    // Notify admin & customer
+    const recipients = [
+      ...(await User.find({ role: "admin" })),
+      await User.findById(project.customer),
+    ];
+
+    for (let recipient of recipients) {
+      await sendEmail(recipient.email, "Project Update", `Project "${project.title}" updated: ${description}`);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Project update submitted successfully",
+      data: update,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+
+exports.updateCapabilities = async (req, res) => {
+  try {
+    const supplierId = req.user.id; // Extract supplier's user ID from request
+    console.log("supplierId", supplierId);
+
+    const { addCapabilities, removeCapabilities } = req.body;
+
+    if (!addCapabilities && !removeCapabilities) {
+      return res.status(400).json({ message: "Provide capabilities to add or remove" });
+    }
+
+    // Step 1: Fetch Supplier's Current Capabilities
+    const supplier = await Supplier.findOne({ user: supplierId });
+    if (!supplier) return res.status(404).json({ message: "Supplier not found" });
+
+    const currentCapabilities = supplier.manufacturingCapabilities || [];
+
+    // Step 2: Check existence of `addCapabilities`
+    const existingAdd = [];
+    const newAdd = [];
+    if (addCapabilities && Array.isArray(addCapabilities)) {
+      addCapabilities.forEach(capability => {
+        if (currentCapabilities.includes(capability)) {
+          existingAdd.push(capability); // Already exists
+        } else {
+          newAdd.push(capability); // Needs to be added
+        }
+      });
+    }
+
+    // Step 3: Check existence of `removeCapabilities`
+    const existingRemove = [];
+    const nonExistingRemove = [];
+    if (removeCapabilities && Array.isArray(removeCapabilities)) {
+      removeCapabilities.forEach(capability => {
+        if (currentCapabilities.includes(capability)) {
+          existingRemove.push(capability); // Exists and can be removed
+        } else {
+          nonExistingRemove.push(capability); // Doesn't exist
+        }
+      });
+    }
+
+    let updatedSupplier = supplier; // Store updated supplier data
+
+    // Step 4: Add new capabilities (separate update)
+    if (newAdd.length > 0) {
+      updatedSupplier = await Supplier.findOneAndUpdate(
+        { user: supplierId },
+        { $addToSet: { manufacturingCapabilities: { $each: newAdd } } },
+        { new: true }
+      );
+    }
+
+    // Step 5: Remove existing capabilities (separate update)
+    if (existingRemove.length > 0) {
+      updatedSupplier = await Supplier.findOneAndUpdate(
+        { user: supplierId },
+        { $pull: { manufacturingCapabilities: { $in: existingRemove } } },
+        { new: true }
+      );
+    }
+
+    // Step 6: Return response
+    res.json({
+      message: "Capabilities updated successfully",
+      existingAdd,
+      newAdd,
+      existingRemove,
+      nonExistingRemove,
+      supplier: updatedSupplier,
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
+exports.getManufacturingCapabilities = async (req, res) => {
+  try {
+    const supplierId = req.user.id; // Extract supplier's user ID from request
+console.log("supplierId", supplierId);
+
+    // Find supplier by user ID
+    const supplier = await Supplier.findOne({ user: supplierId }).select("manufacturingCapabilities");
+    
+    if (!supplier) {
+      return res.status(404).json({ message: "Supplier not found" });
+    }
+
+    res.json({ manufacturingCapabilities: supplier.manufacturingCapabilities });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
 =======================================================================
-C:\My-Projects\Fastners-new\server\controllers\userControllers.js
+E:\My-Projects\Fastners-new\server\controllers\userControllers.js
 
 // userController.js
 const User = require("../models/userModel");
@@ -673,6 +1137,7 @@ const Admin = require("../models/adminModel");
 const { sendEmail } = require("../helpers/emailHelper");
 const { generateOTP } = require("../helpers/otpHelper");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 exports.register = async (req, res) => {
   try {
@@ -873,28 +1338,103 @@ exports.updatePassword = async (req, res) => {
   }
 };
 
+// exports.forgotPassword = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+//     }
+//     const resetToken = jwt.sign({ id: user._id }, process.env.RESET_SECRET, {
+//       expiresIn: "1h",
+//     });
+//     const resetLink = `http://localhost:5173/auth/reset-password?token=${resetToken}`;
+
+//     const resetlink = `
+//       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #dddddd; border-radius: 10px;">
+//         <h2 style="color: #333;">Password Reset Request</h2>
+//         <p style="color: #555;">
+//           You requested to reset your password. Please use the following link to reset it:
+//         </p>
+//         <div style="text-align: center; margin: 20px 0;">
+//           <a href="${resetLink}" style="font-size: 18px; font-weight: bold; color: #007BFF;">Reset Password</a>
+//         </div>
+//         <p style="color: #555;">
+//           If you did not request this password reset, please ignore this email.
+//         </p>
+//         <p style="color: #999; font-size: 12px;">
+//           Best regards,<br>
+//           Your Service Team
+//         </p>
+//       </div>
+//     `;
+
+//     await sendEmail(
+//       email,
+//       "Password Reset Request",
+//       "Please use the following link to reset your password: [link]",
+//       resetlink
+//     );
+//     res
+//       .status(200)
+//       .json({ success: true, message: "Password reset link sent to email" });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
+
     if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
+
     const resetToken = jwt.sign({ id: user._id }, process.env.RESET_SECRET, {
       expiresIn: "1h",
     });
-    const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`; // Replace with your frontend URL
-    await sendEmail(
-      email,
-      "Password Reset Request",
-      `Please use the following link to reset your password: ${resetLink}`
-    );
+    const resetLink = `http://localhost:5173/auth/reset-password?token=${resetToken}`; // Replace with your frontend URL
+
+    // Define the HTML email content
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #dddddd; border-radius: 10px;">
+        <h2 style="color: #333;">Password Reset Request</h2>
+        <p style="color: #555;">
+          You requested to reset your password. Please use the following link to reset it:
+        </p>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${resetLink}" style="font-size: 18px; font-weight: bold; color: #007BFF;">Reset Password</a>
+        </div>
+        <p style="color: #555;">
+          If you did not request this password reset, please ignore this email.
+        </p>
+        <p style="color: #999; font-size: 12px;">
+          Best regards,<br>
+          Your Service Team
+        </p>
+      </div>
+    `;
+
+    console.log("Sending email with HTML content..."); // Debugging line
+
+    // Send the email with HTML content
+    await sendEmail(email, "Password Reset Request", html);
+
     res
       .status(200)
       .json({ success: true, message: "Password reset link sent to email" });
   } catch (error) {
+    console.error("Error in forgotPassword function:", error); // Debugging line
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -929,16 +1469,17 @@ exports.resetPassword = async (req, res) => {
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\helpers\emailHelper.js
+E:\My-Projects\Fastners-new\server\helpers\emailHelper.js
 
 // emailHelper.js
 const nodemailer = require("nodemailer");
 const config = require("../config/config");
 
-exports.sendEmail = async (to, subject, text) => {
+exports.sendEmail = async (to, subject, html) => {
   const transporter = nodemailer.createTransport({
-    host: config.SMTP_HOST,
-    port: config.SMTP_PORT,
+    // host: config.SMTP_HOST,
+    // port: config.SMTP_PORT,
+    service: "gmail",
     auth: {
       user: config.SMTP_USER,
       pass: config.SMTP_PASS,
@@ -949,7 +1490,7 @@ exports.sendEmail = async (to, subject, text) => {
     from: config.FROM_EMAIL,
     to,
     subject,
-    text,
+    html,
   });
 };
 
@@ -960,7 +1501,7 @@ exports.generateOTP = () => {
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\helpers\otpHelper.js
+E:\My-Projects\Fastners-new\server\helpers\otpHelper.js
 
 const crypto = require("node:crypto");
 
@@ -973,7 +1514,7 @@ module.exports = { generateOTP };
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\middleware\authMiddleware.js
+E:\My-Projects\Fastners-new\server\middleware\authMiddleware.js
 
 // authMiddleware.js
 const jwt = require("jsonwebtoken");
@@ -996,6 +1537,8 @@ exports.protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
     req.user = await User.findById(decoded.id);
+    // console.log("User",req.user);
+    
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -1024,7 +1567,7 @@ exports.authorize = (...roles) => {
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\adminModel.js
+E:\My-Projects\Fastners-new\server\models\adminModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -1040,7 +1583,7 @@ module.exports = Admin;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\customerModel.js
+E:\My-Projects\Fastners-new\server\models\customerModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -1073,7 +1616,7 @@ module.exports = Customer;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\projectModel.js
+E:\My-Projects\Fastners-new\server\models\projectModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -1129,7 +1672,6 @@ const ProjectSchema = new Schema(
     status: {
       type: String,
       enum: [
-        "QUOTED",
         "AVAILABLE",
         "IN_PRODUCTION",
         "SHIPPED",
@@ -1148,7 +1690,7 @@ module.exports = Project;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\projectUpdateModel.js
+E:\My-Projects\Fastners-new\server\models\projectUpdateModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -1163,6 +1705,7 @@ const ProjectUpdateSchema = new Schema(
       enum: ["PENDING", "IN_PROGRESS", "COMPLETED"],
       default: "PENDING",
     },
+    completionPercentage: { type: Number, required: true },
     attachments: [
       {
         name: String,
@@ -1197,16 +1740,14 @@ const ProjectUpdateSchema = new Schema(
         uploadedAt: Date,
       },
     ],
-    createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
 module.exports = mongoose.model("ProjectUpdate", ProjectUpdateSchema);
 
-
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\quotationModel.js
+E:\My-Projects\Fastners-new\server\models\quotationModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -1220,7 +1761,7 @@ const QuotationSchema = new Schema(
     },
     supplier: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Supplier",
       required: true,
     },
     unitPrice: {
@@ -1268,11 +1809,12 @@ const QuotationSchema = new Schema(
   { timestamps: true }
 );
 
+QuotationSchema.index({ project: 1, supplier: 1 }, { unique: true });
 module.exports = mongoose.model("Quotation", QuotationSchema);
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\supplierModel.js
+E:\My-Projects\Fastners-new\server\models\supplierModel.js
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
@@ -1296,7 +1838,7 @@ module.exports = Supplier;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\models\userModel.js
+E:\My-Projects\Fastners-new\server\models\userModel.js
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
@@ -1368,7 +1910,7 @@ module.exports = mongoose.model("User", UserSchema);
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\routes\adminRoutes.js
+E:\My-Projects\Fastners-new\server\routes\adminRoutes.js
 
 // adminRoutes.js
 const express = require("express");
@@ -1382,6 +1924,11 @@ const {
   forwardProjectToSuppliers,
   reviewQuotation,
   getAllSuppliers,
+  getAllProjectUpdates,
+  getProjectUpdateById,
+  createProjectUpdate,
+  updateProjectUpdate,
+  deleteProjectUpdate,
 } = require("../controllers/adminControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -1397,11 +1944,21 @@ router.get("/dashboard", getDashboardStats);
 router.post("/projects/:id/forward", forwardProjectToSuppliers);
 router.post("/quotations/review", reviewQuotation);
 
+
+
+
+// Project Update Routes
+router.get("/project-updates", getAllProjectUpdates);
+router.get("/project-updates/:id", getProjectUpdateById);
+router.post("/project-updates", createProjectUpdate);
+router.put("/project-updates/:id", updateProjectUpdate);
+router.delete("/project-updates/:id", deleteProjectUpdate);
+
 module.exports = router;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\routes\projectRoutes.js
+E:\My-Projects\Fastners-new\server\routes\projectRoutes.js
 
 // projectRoutes.js
 const express = require("express");
@@ -1437,7 +1994,7 @@ module.exports = router;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\routes\quotationRoutes.js
+E:\My-Projects\Fastners-new\server\routes\quotationRoutes.js
 
 // quotationRoutes.js
 const express = require("express");
@@ -1448,52 +2005,22 @@ const {
   getQuotationById,
   updateQuotation,
   acceptQuotation,
+  updateQuotationStatus,
 } = require("../controllers/quotationControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.post("/", protect, authorize("supplier"), createQuotation);
+router.post("/projects/:projectId", protect, authorize("admin","supplier"), createQuotation);
 router.get("/", protect, getQuotations);
 router.get("/:id", protect, getQuotationById);
-router.put("/:id", protect, authorize("admin", "supplier"), updateQuotation);
+router.put("/:id", protect, authorize("admin"), updateQuotationStatus);
 router.post("/:id/accept", protect, authorize("admin"), acceptQuotation);
 
 module.exports = router;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\routes\supplierRoutes.js
+E:\My-Projects\Fastners-new\server\routes\supplierRoutes.js
 
-// // supplierRoutes.js
-// const express = require("express");
-// const router = express.Router();
-// const {
-//   getSuppliers,
-//   getSupplierById,
-//   updateSupplier,
-//   getSupplierProjects,
-//   updateProjectStatus,
-// } = require("../controllers/supplierControllers");
-// const { protect, authorize } = require("../middleware/authMiddleware");
-
-// router.get("/", protect, authorize("admin"), getSuppliers);
-// router.get("/:id", protect, getSupplierById);
-// router.put("/:id", protect, authorize("admin", "supplier"), updateSupplier);
-// router.get(
-//   "/:id/projects",
-//   protect,
-//   authorize("admin", "supplier"),
-//   getSupplierProjects
-// );
-// router.post(
-//   "/update-project",
-//   protect,
-//   authorize("admin", "supplier"),
-//   updateProjectStatus
-// );
-
-// module.exports = router;
-
-// supplierRoutes.js
 const express = require("express");
 const router = express.Router();
 const {
@@ -1503,12 +2030,20 @@ const {
   getSupplierProjects,
   updateProjectStatus,
   getSupplierByUserId,
+  updateCapabilities,
+  getManufacturingCapabilities,
+  getSupplierOrders,
 } = require("../controllers/supplierControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
+
+router.get("/capabilities", protect, getManufacturingCapabilities);
 router.get("/", protect, authorize("admin"), getSuppliers);
+router.get("/me", protect, getSupplierByUserId);
+router.get("/orders", protect, authorize("supplier"), getSupplierOrders);
+// router.get("/bids", protect, authorize("supplier"), getSupplierBids);
+// router.get("/active-projects", protect, authorize("supplier"), getSupplierActiveProjects);
 router.get("/:id", protect, getSupplierById);
-router.get("/get-by-user-id", protect, getSupplierByUserId);
 router.put("/:id", protect, authorize("admin", "supplier"), updateSupplier);
 router.get(
   "/:id/projects",
@@ -1523,11 +2058,14 @@ router.post(
   updateProjectStatus
 );
 
+// Update capabilities (add/remove multiple at once)
+router.post("/capabilities", protect, updateCapabilities);
+
 module.exports = router;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\routes\userRoutes.js
+E:\My-Projects\Fastners-new\server\routes\userRoutes.js
 
 // userRoutes.js
 const express = require("express");
@@ -1560,7 +2098,7 @@ module.exports = router;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\utils\apiFeatures.js
+E:\My-Projects\Fastners-new\server\utils\apiFeatures.js
 
 // utils/apiFeatures.js
 
@@ -1633,7 +2171,7 @@ module.exports = APIFeatures;
 
 
 =======================================================================
-C:\My-Projects\Fastners-new\server\app.js
+E:\My-Projects\Fastners-new\server\app.js
 
 const express = require("express");
 const connectDB = require("./config/dbConnection");

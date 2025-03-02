@@ -7,13 +7,14 @@ const {
   getQuotationById,
   updateQuotation,
   acceptQuotation,
+  updateQuotationStatus,
 } = require("../controllers/quotationControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.post("/", protect, authorize("supplier"), createQuotation);
+router.post("/projects/:projectId", protect, authorize("admin","supplier"), createQuotation);
 router.get("/", protect, getQuotations);
 router.get("/:id", protect, getQuotationById);
-router.put("/:id", protect, authorize("admin", "supplier"), updateQuotation);
+router.put("/:id", protect, authorize("admin"), updateQuotationStatus);
 router.post("/:id/accept", protect, authorize("admin"), acceptQuotation);
 
 module.exports = router;

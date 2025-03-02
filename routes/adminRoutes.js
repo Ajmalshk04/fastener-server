@@ -10,6 +10,11 @@ const {
   forwardProjectToSuppliers,
   reviewQuotation,
   getAllSuppliers,
+  getAllProjectUpdates,
+  getProjectUpdateById,
+  createProjectUpdate,
+  updateProjectUpdate,
+  deleteProjectUpdate,
 } = require("../controllers/adminControllers");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -24,5 +29,15 @@ router.delete("/users/:id", deleteUser);
 router.get("/dashboard", getDashboardStats);
 router.post("/projects/:id/forward", forwardProjectToSuppliers);
 router.post("/quotations/review", reviewQuotation);
+
+
+
+
+// Project Update Routes
+router.get("/project-updates", getAllProjectUpdates);
+router.get("/project-updates/:id", getProjectUpdateById);
+router.post("/project-updates", createProjectUpdate);
+router.put("/project-updates/:id", updateProjectUpdate);
+router.delete("/project-updates/:id", deleteProjectUpdate);
 
 module.exports = router;
