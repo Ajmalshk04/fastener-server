@@ -13,10 +13,32 @@ const app = express();
 connectDB();
 
 // Use CORS middleware
+// Define allowed origins
+const allowedOrigins = [
+  'http://localhost:5173',  
+  'https://fastener-client.netlify.app',
+  'http://localhost:5174',  
+  'http://localhost:5175',  
+  'http://localhost:3000' 
+];
+
+// Use CORS middleware with dynamic origin checking
 app.use(cors({
-  origin: ['https://fastener-client.netlify.app'],
-  // credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in our allowed list
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true // If you need to send cookies or authentication headers
 }));
+
+
 // Middleware
 app.use(express.json());
 
