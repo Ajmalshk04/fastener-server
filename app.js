@@ -13,7 +13,10 @@ const app = express();
 connectDB();
 
 // Use CORS middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://fastener-client.netlify.app'],
+  // credentials: true
+}));
 // Middleware
 app.use(express.json());
 
