@@ -28,8 +28,7 @@ exports.getSuppliers = async (req, res) => {
 exports.getSupplierById = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.id).populate(
-      "user",
-      "firstName lastName email"
+      "user"
     );
     if (!supplier) {
       return res
@@ -44,7 +43,7 @@ exports.getSupplierById = async (req, res) => {
 exports.getSupplierByUserId = async (req, res) => {
   try {
 
-    console.log(req.user._id);
+    console.log(req.user);
 const user = req.user._id;
 
 
@@ -54,9 +53,10 @@ const user = req.user._id;
         .json({ success: false, message: "User ID is not valid" });
     }
 
-    const supplier = await Supplier.findOne({ user }).populate(
+    const supplier = await Supplier.findOne({ user })
+    .populate(
       "user",
-      "firstName lastName email"
+      "firstName lastName email phoneNumber"
     );
     if (!supplier) {
       return res

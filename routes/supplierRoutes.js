@@ -15,9 +15,9 @@ const {
 const { protect, authorize } = require("../middleware/authMiddleware");
 
 
+router.get("/me", protect, getSupplierByUserId);
 router.get("/capabilities", protect, getManufacturingCapabilities);
 router.get("/", protect, authorize("admin"), getSuppliers);
-router.get("/me", protect, getSupplierByUserId);
 router.get("/orders", protect, authorize("supplier"), getSupplierOrders);
 router.get("/orders/:orderId", protect,authorize("supplier"), getSupplierOrderById);
 // router.get("/bids", protect, authorize("supplier"), getSupplierBids);

@@ -5,6 +5,8 @@ const config = require("../config/config");
 
 exports.protect = async (req, res, next) => {
   let token;
+  console.log("Headers",req.headers);
+  
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
@@ -19,7 +21,7 @@ exports.protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
     req.user = await User.findById(decoded.id);
-    // console.log("User",req.user);
+    console.log("User",req.user);
     
     if (!req.user) {
       return res.status(401).json({
